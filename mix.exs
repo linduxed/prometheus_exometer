@@ -47,6 +47,7 @@ defmodule PrometheusExometer.Mixfile do
       # {:setup, "~> 2.0", override: true},
       {:ex_doc, "~> 0.19.2", only: :dev, runtime: false},
       # {:mix_test_watch, "~> 0.5", only: [:dev, :test], runtime: false},
+      {:prometheus_ex, "~> 3.0"}
     ]
   end
 
