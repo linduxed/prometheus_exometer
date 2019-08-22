@@ -1,10 +1,11 @@
-defmodule Prometheus.VMMemoryCollector do
-  # iex(4)> Prometheus.Registry.register_collector(Prometheus.VMMemoryCollector)
-
+defmodule PrometheusExometer.Collector do
   use Prometheus.Collector
+
+  alias PrometheusExometer.FormatText
 
   @labels [:processes, :atom, :binary, :code, :ets]
 
+  @impl
   def collect_mf(_registry, callback) do
     memory = :erlang.memory()
 
@@ -19,6 +20,7 @@ defmodule Prometheus.VMMemoryCollector do
     :ok
   end
 
+  @impl
   def collect_metrics(:erlang_vm_bytes_total, memory) do
     Prometheus.Model.gauge_metrics(
       for label <- @labels do
@@ -29,16 +31,6 @@ defmodule Prometheus.VMMemoryCollector do
 
   defp create_gauge(name, help, data) do
     Prometheus.Model.create_mf(name, help, :gauge, __MODULE__, data)
-  end
-end
-
-defmodule PrometheusExometer.Collector do
-  @behaviour :prometheus_collector
-
-  alias PrometheusExometer.FormatText
-
-  @impl
-  def collect_mf do
   end
 
   @doc """
@@ -55,40 +47,24 @@ defmodule PrometheusExometer.Collector do
       internal Exometer names into external format
 
   """
-  @spec scrape(map) :: iolist
-  def scrape(config) do
+  @spec scrape() :: iolist
+  def scrape() do
     start_time = :os.timestamp()
 
-    entries = :exometer.find_entries([:_])
-    entries = Enum.sort(entries)
-    # Lager.debug("entries: #{inspect entries, pretty: true, limit: 30_000}")
-
-    entry_info = List.foldl(entries, %{}, &collect_children/2)
-
-    entry_keys =
-      entry_info
-      |> Map.keys()
-      |> Enum.sort()
-
     results =
-      Enum.flat_map(entry_keys, fn name ->
-        value = entry_info[name]
-        # Lager.debug("name: #{inspect name} #{inspect value.info}")
-        # Enum.each(value.children, &(Lager.debug("children: #{inspect &1, pretty: true}")))
-        FormatText.format_entry(value, config)
-      end)
 
-    # {results, _names_seen} = List.foldl(entries, {[], %{}}, &format_entry/2)
+    {time, results} = :timer.tc(fn ->
+      [:_]
+      |> :exometer.find_entries()
+      |> Enum.sort()
+      |> List.foldl(%{}, &collect_children/2)
+    end)
+
     [
       results,
-      FormatText.format_scrape_duration(config, start_time),
-      FormatText.format_namespace_up(config)
+      Prometheus.Model.gauge_metric([name: :exometer_scrape_duration_microseconds], time)
     ]
   end
-
-  @doc "Scrape with default config"
-  @spec scrape() :: iolist
-  def scrape, do: scrape(%{})
 
   defp collect_children({exometer_name, exometer_type, :enabled}, parents) do
     info = :exometer.info(exometer_name)

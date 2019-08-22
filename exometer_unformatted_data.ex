@@ -1,3 +1,11 @@
+# Data obtained by running a modified PrometheusExometer.scrape/0:
+#
+# PrometheusExometer.scrape/0 obtains some data, then formats like Prometheus
+# would format it if it ran its own formatters.
+#
+# This file contains what one gets when dumping all the data, without
+# formatting it.
+
 %{
   #
   # One entry like this for every VNode, i.e. many.
@@ -30,7 +38,7 @@
       status: :enabled,
       # Always the same
       cache: 0,
-      # Always the same
+      # Increases when work increases
       value: [value: 0],
       # Always the same
       timestamp: :undefined,
